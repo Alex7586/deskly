@@ -14,11 +14,14 @@ import java.util.Optional;
 public class AuthService {
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final AuditService auditService;
 
     public AuthService(UserRepository userRepository,
-                       PasswordResetTokenRepository passwordResetTokenRepository){
+                       PasswordResetTokenRepository passwordResetTokenRepository,
+                       AuditService auditService){
         this.userRepository = userRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.auditService = auditService;
     }
 
     public AuthResponse register(RegisterRequest request){
@@ -47,7 +50,7 @@ public class AuthService {
                 savedUser.getEmail());
     }
 
-    public AuthResponse login(LoginRequest request, HttpSession session){
+    public AuthResponse login(LoginRequest request, HttpSession session, String ipAddress){
         if(request.getEmail() == null || request.getEmail().isBlank())
             throw new RuntimeException("Email is required");
 
@@ -66,6 +69,7 @@ public class AuthService {
 
         session.setAttribute("userId", user.getId());
         session.setAttribute("userEmail", user.getEmail());
+        auditService.log(user.getId(),"LOGIN", "AUTH", null, ipAddress);
 
         return new AuthResponse(
                 "Login sucesful",
@@ -91,12 +95,17 @@ public class AuthService {
         );
     }
 
-    public AuthResponse logout(HttpSession session){
+    public AuthResponse logout(HttpSession session, String ipAddress){
+        Object userIdObj = session.getAttribute("userId");
+        Long userId = userIdObj instanceof Long ? (Long) userIdObj : null;
+
+        auditService.log(userId, "LOGOUT","AUTH", null, ipAddress);
+
         session.invalidate();
         return new AuthResponse("Logout successfull",null,null);
     }
 
-    public AuthResponse forgotPassword(ForgotPasswordRequest request){
+    public AuthResponse forgotPassword(ForgotPasswordRequest request, String ipAddress){
         if(request.getEmail() == null || request.getEmail().isBlank())
             throw new RuntimeException("Email is requiered");
 
@@ -112,6 +121,7 @@ public class AuthService {
                 false);
 
         passwordResetTokenRepository.save(token);
+        auditService.log(user.getId(), "FORGOT_PASSWORD", "PASSWORD_RESET", null, ipAddress);
 
         return new AuthResponse(
                 "Password reset token generated",
@@ -121,7 +131,7 @@ public class AuthService {
         );
     }
 
-    public AuthResponse resetPassword(ResetPasswordRequest request){
+    public AuthResponse resetPassword(ResetPasswordRequest request, String ipAddress){
         if(request.getToken() == null || request.getToken().isBlank())
             throw new RuntimeException("Token is required");
 
@@ -134,6 +144,7 @@ public class AuthService {
         User user = resetToken.getUser();
         user.setPasswordHash(request.getNewPassword());
         userRepository.save(user);
+        auditService.log(user.getId(), "RESET_PASSWORD", "PASSWORD_RESET", null, ipAddress);
 
         return new AuthResponse(
                 "Password reset successful",

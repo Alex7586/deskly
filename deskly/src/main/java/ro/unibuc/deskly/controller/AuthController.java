@@ -3,6 +3,7 @@ package ro.unibuc.deskly.controller;
 import ro.unibuc.deskly.dto.*;
 import ro.unibuc.deskly.service.AuthService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,8 +23,10 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request, HttpSession session){
-        AuthResponse response = authService.login(request, session);
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request,
+                                              HttpSession session,
+                                              HttpServletRequest httpRequest){
+        AuthResponse response = authService.login(request, session, httpRequest.getRemoteAddr());
         return ResponseEntity.ok(response);
     }
 
@@ -34,20 +37,23 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<AuthResponse> logout(HttpSession  session){
-        AuthResponse response = authService.logout(session);
+    public ResponseEntity<AuthResponse> logout(HttpSession  session,
+                                               HttpServletRequest httpRequest){
+        AuthResponse response = authService.logout(session, httpRequest.getRemoteAddr());
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<AuthResponse> forgotPassword(@RequestBody ForgotPasswordRequest request){
-        AuthResponse response = authService.forgotPassword(request);
+    public ResponseEntity<AuthResponse> forgotPassword(@RequestBody ForgotPasswordRequest request,
+                                                       HttpServletRequest httpRequest){
+        AuthResponse response = authService.forgotPassword(request, httpRequest.getRemoteAddr());
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<AuthResponse> resetPassword(@RequestBody ResetPasswordRequest request){
-        AuthResponse response = authService.resetPassword(request);
+    public ResponseEntity<AuthResponse> resetPassword(@RequestBody ResetPasswordRequest request,
+                                                      HttpServletRequest httpRequest){
+        AuthResponse response = authService.resetPassword(request, httpRequest.getRemoteAddr());
         return ResponseEntity.ok(response);
     }
 
