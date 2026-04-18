@@ -21,6 +21,12 @@ public class PasswordResetToken {
 
     @Getter
     @Setter
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Getter
+    @Setter
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
@@ -31,4 +37,10 @@ public class PasswordResetToken {
 
 
     public PasswordResetToken(){}
+    public PasswordResetToken(String token, User user, Instant expiresAt, Boolean used){
+        this.token = token;
+        this.user = user;
+        this.expiresAt = expiresAt;
+        this.used = used;
+    }
 }

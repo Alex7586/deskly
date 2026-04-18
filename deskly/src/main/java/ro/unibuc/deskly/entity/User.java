@@ -45,4 +45,17 @@ public class User {
 
 
     public User(){}
+    public User(String email,
+                String passwordHash,
+                String role,
+                Boolean locked,
+                Integer failedAttempts,
+                Instant createdAt){
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.role = role;
+        this.locked = locked;
+        this.failedAttempts = failedAttempts;
+        this.createdAt = createdAt;
+    }
 }
