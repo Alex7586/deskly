@@ -52,4 +52,15 @@ public class Ticket {
 
 
     public Ticket(){}
+
+    public Ticket(String title, String description, String status,
+                  String severity, User owner, Instant createdAt, Instant updatedAt) {
+        this.title = title;
+        this.description = description;
+        this.status = status;
+        this.severity = severity;
+        this.owner = owner;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
 }

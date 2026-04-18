@@ -27,7 +27,7 @@ public class AuditLog {
     @Getter
     @Setter
     @Column(nullable = false)
-    private String resourse;
+    private String resource;
 
     @Getter
     @Setter
