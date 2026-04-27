@@ -1,5 +1,6 @@
 package ro.unibuc.deskly.service;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import ro.unibuc.deskly.dto.*;
 import ro.unibuc.deskly.entity.User;
 import ro.unibuc.deskly.entity.PasswordResetToken;
@@ -15,28 +16,43 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final AuditService auditService;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthService(UserRepository userRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
-                       AuditService auditService){
+                       AuditService auditService,
+                       PasswordEncoder passwordEncoder){
         this.userRepository = userRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.auditService = auditService;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    private void validatePassword(String password){
+        if(password == null || password.isBlank())
+            throw new RuntimeException("Password is required");
+        if(password.length() < 8)
+            throw new RuntimeException("Password must have at least 8 characters");
+
+        boolean hasLetter = password.chars().anyMatch(Character::isLetter);
+        boolean hasDigit = password.chars().anyMatch(Character::isDigit);
+
+        if(!hasLetter || !hasDigit)
+            throw new RuntimeException("Password must contain at least one letter and one digit");
     }
 
     public AuthResponse register(RegisterRequest request){
         if(request.getEmail() == null || request.getEmail().isBlank())
             throw new RuntimeException("Email is required");
 
-        if(request.getPassword() == null || request.getPassword().isBlank())
-            throw new RuntimeException("Password is required");
+        validatePassword(request.getPassword());
 
         if(userRepository.existsByEmail(request.getEmail()))
             throw new RuntimeException("User already exists.");
 
         User user = new User(
                 request.getEmail(),
-                request.getPassword(),
+                passwordEncoder.encode(request.getPassword()),
                 "USER",
                 false,
                 0,
@@ -60,12 +76,12 @@ public class AuthService {
         Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
 
         if(userOptional.isEmpty())
-            throw new RuntimeException("User not found");
+            throw new RuntimeException("Invalid credentials");
 
         User user = userOptional.get();
 
-        if(!user.getPasswordHash().equals(request.getPassword()))
-            throw new RuntimeException("Wrong password");
+        if(!passwordEncoder.matches(user.getPasswordHash(), request.getPassword()))
+            throw new RuntimeException("Invalid credentials");
 
         session.setAttribute("userId", user.getId());
         session.setAttribute("userEmail", user.getEmail());
@@ -135,14 +151,13 @@ public class AuthService {
         if(request.getToken() == null || request.getToken().isBlank())
             throw new RuntimeException("Token is required");
 
-        if(request.getNewPassword() == null || request.getNewPassword().isBlank())
-            throw new RuntimeException("New password is required");
+        validatePassword(request.getNewPassword());
 
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.getToken())
                 .orElseThrow(() -> new RuntimeException("Invalid reset token"));
 
         User user = resetToken.getUser();
-        user.setPasswordHash(request.getNewPassword());
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
         auditService.log(user.getId(), "RESET_PASSWORD", "PASSWORD_RESET", null, ipAddress);
 

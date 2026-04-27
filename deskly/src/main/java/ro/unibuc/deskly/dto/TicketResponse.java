@@ -35,7 +35,7 @@ public class TicketResponse {
 
     public TicketResponse(){}
     public TicketResponse(Long id, String title, String description, String status, String severity, Long ownerId,
-                          String createdAt, String ownerEmail, String updatedAt) {
+                          String ownerEmail, String createdAt,  String updatedAt) {
         this.id = id;
         this.title = title;
         this.description = description;

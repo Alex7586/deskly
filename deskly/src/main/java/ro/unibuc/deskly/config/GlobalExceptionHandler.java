@@ -4,19 +4,37 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.time.Instant;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler
+    @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex){
         HttpStatus status = HttpStatus.BAD_REQUEST;
 
-        if("User is not authenticated".equals(ex.getMessage()))
+        String message = ex.getMessage();
+
+        if("Invalid credentials".equals(message) || "User is not authenticated".equals(message))
             status = HttpStatus.UNAUTHORIZED;
+
+        if("Ticket not found".equals(message) || "Authenticated user not found".equals(message))
+            status = HttpStatus.NOT_FOUND;
 
         return ResponseEntity
                 .status(status)
-                .body(Map.of("error", ex.getMessage()));
+                .body(Map.of(
+                        "timestamp", Instant.now().toString(),
+                        "error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGenericException(RuntimeException ex){
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                        "timestamp", Instant.now().toString(),
+                        "error", "INTERNAL SERVER ERROR"));
     }
 }

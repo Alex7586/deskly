@@ -23,6 +23,13 @@ public class AuditService {
         auditLog.setIpAddress(ipAddress);
         auditLog.setTimestamp(Instant.now());
 
+        System.out.println("Audit Debug");
+        System.out.println("userId = " + userId);
+        System.out.println("action = " + action);
+        System.out.println("resource = " + resource);
+        System.out.println("resourceId = " + resourceId);
+        System.out.println("ipAddress = " + ipAddress);
+
         auditLogRepository.save(auditLog);
     }
 }
