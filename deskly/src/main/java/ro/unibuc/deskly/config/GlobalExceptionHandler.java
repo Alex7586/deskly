@@ -20,6 +20,8 @@ public class GlobalExceptionHandler {
             status = HttpStatus.UNAUTHORIZED;
         else if("Account locked temporarily. Try again later!".equals(message))
             status = HttpStatus.TOO_MANY_REQUESTS;
+        else if("Access denied".equals(message))
+            status = HttpStatus.FORBIDDEN;
         else if("Ticket not found".equals(message) || "Authenticated user not found".equals(message))
             status = HttpStatus.NOT_FOUND;
 

@@ -50,6 +50,15 @@ public class TicketService {
         );
     }
 
+    private Ticket getOwnedTicket(Long ticketId, HttpSession session){
+        User currentUser = getAuthenticatedUser(session);
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        if(!ticket.getOwner().getId().equals(currentUser.getId()))
+            throw new RuntimeException("Access denied");
+        return ticket;
+    }
+
     public TicketResponse createTicket(CreateTicketRequest request,
                                        HttpSession session,
                                        String ipAddress){
@@ -79,22 +88,20 @@ public class TicketService {
                 .toList();
     }
 
-    // fara ownership check
+    // cu ownership check
     public TicketResponse getTicketById(Long ticketId, HttpSession session){
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        Ticket ticket = getOwnedTicket(ticketId, session);
         return mapToResponse(ticket);
     }
 
-    // fara ownership check
+    // cu ownership check
     public TicketResponse updateTicket(Long ticketId,
                                        CreateTicketRequest request,
                                        HttpSession session,
                                        String ipAddress){
         User currentUser = getAuthenticatedUser(session);
 
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        Ticket ticket = getOwnedTicket(ticketId, session);
 
         if(request.getTitle() != null && !request.getTitle().isBlank())
             ticket.setTitle(request.getTitle());
@@ -111,13 +118,12 @@ public class TicketService {
         return mapToResponse(updatedTicket);
     }
 
-    // fara ownership check
+    // cu ownership check
     public void deleteTicket(Long ticketId,
                              HttpSession session,
                              String ipAddress){
         User currentUser = getAuthenticatedUser(session);
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        Ticket ticket = getOwnedTicket(ticketId, session);
         auditService.log(currentUser.getId(), "DELETE", "TICKET", ticket.getId(), ipAddress);
         ticketRepository.delete(ticket);
     }

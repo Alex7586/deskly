@@ -8,6 +8,8 @@ import ro.unibuc.deskly.repository.UserRepository;
 import ro.unibuc.deskly.repository.PasswordResetTokenRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Service;
+
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -74,6 +76,15 @@ public class AuthService {
 
         if(!hasLetter || !hasDigit)
             throw new RuntimeException("Password must contain at least one letter and one digit");
+    }
+
+    private String generateSecureToken(){
+        byte[] bytes = new byte[32];
+        new SecureRandom().nextBytes(bytes);
+        StringBuilder sb = new StringBuilder();
+        for(byte b : bytes)
+            sb.append(String.format("%02x", b));
+        return sb.toString();
     }
 
     public AuthResponse register(RegisterRequest request){
@@ -170,22 +181,21 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String tokenValue = "reset-" + user.getId();
+        String tokenValue = generateSecureToken();
 
         PasswordResetToken token = new PasswordResetToken(
                 tokenValue,
                 user,
-                Instant.now().plusSeconds(86400),
+                Instant.now().plusSeconds(900),
                 false);
 
         passwordResetTokenRepository.save(token);
         auditService.log(user.getId(), "FORGOT_PASSWORD", "PASSWORD_RESET", null, ipAddress);
 
         return new AuthResponse(
-                "Password reset token generated",
-                user.getId(),
-                user.getEmail(),
-                tokenValue
+                "If the account exists, a reset process has been initiated",
+                null,
+                null
         );
     }
 
@@ -198,9 +208,18 @@ public class AuthService {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.getToken())
                 .orElseThrow(() -> new RuntimeException("Invalid reset token"));
 
+        if(Boolean.TRUE.equals(resetToken.getUsed()))
+            throw new RuntimeException("Invalid reset token");
+
+        if(resetToken.getExpiresAt() == null || Instant.now().isAfter(resetToken.getExpiresAt()))
+            throw new RuntimeException("Invalid reset token");
+
         User user = resetToken.getUser();
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
         auditService.log(user.getId(), "RESET_PASSWORD", "PASSWORD_RESET", null, ipAddress);
 
         return new AuthResponse(
