@@ -1,5 +1,7 @@
 package ro.unibuc.deskly.controller;
 
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import ro.unibuc.deskly.dto.*;
 import ro.unibuc.deskly.service.AuthService;
 import jakarta.servlet.http.HttpSession;
@@ -38,8 +40,13 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<AuthResponse> logout(HttpSession  session,
-                                               HttpServletRequest httpRequest){
+                                               HttpServletRequest httpRequest,
+                                               HttpServletResponse httpResponse){
         AuthResponse response = authService.logout(session, httpRequest.getRemoteAddr());
+        httpResponse.setHeader(
+                HttpHeaders.SET_COOKIE,
+                "JSESSIONID=; Path=/; Max-Age=0; HttpOnly; SamSite=Lax"
+        );
         return ResponseEntity.ok(response);
     }
 

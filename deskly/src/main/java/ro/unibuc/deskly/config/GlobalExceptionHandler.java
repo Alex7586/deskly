@@ -18,8 +18,9 @@ public class GlobalExceptionHandler {
 
         if("Invalid credentials".equals(message) || "User is not authenticated".equals(message))
             status = HttpStatus.UNAUTHORIZED;
-
-        if("Ticket not found".equals(message) || "Authenticated user not found".equals(message))
+        else if("Account locked temporarily. Try again later!".equals(message))
+            status = HttpStatus.TOO_MANY_REQUESTS;
+        else if("Ticket not found".equals(message) || "Authenticated user not found".equals(message))
             status = HttpStatus.NOT_FOUND;
 
         return ResponseEntity

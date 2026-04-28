@@ -40,6 +40,11 @@ public class User {
 
     @Getter
     @Setter
+    @Column(name = "lock_until")
+    private Instant lockUntil;
+
+    @Getter
+    @Setter
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

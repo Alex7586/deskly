@@ -17,6 +17,8 @@ public class AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final AuditService auditService;
     private final PasswordEncoder passwordEncoder;
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int LOCK_DURATION_SECONDS = 300;
 
     public AuthService(UserRepository userRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
@@ -26,6 +28,39 @@ public class AuthService {
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.auditService = auditService;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    private boolean isUserLocked(User user){
+        if(user.getLockUntil() == null)
+            return false;
+        if(Instant.now().isAfter(user.getLockUntil())){
+            user.setLocked(false);
+            user.setLockUntil(null);
+            user.setFailedAttempts(0);
+            userRepository.save(user);
+            return false;
+        }
+        return Boolean.TRUE.equals(user.getLocked());
+    }
+
+    private void handleFailedLogin(User user, String ipAddress){
+        int attempts = user.getFailedAttempts() == null ? 0 : user.getFailedAttempts();
+        attempts++;
+        user.setFailedAttempts(attempts);
+        if(attempts >= MAX_FAILED_ATTEMPTS){
+            user.setLocked(true);
+            user.setLockUntil(Instant.now().plusSeconds(LOCK_DURATION_SECONDS));
+        }
+
+        userRepository.save(user);
+        auditService.log(user.getId(), "FAILED_LOGIN", "AUTH", null, ipAddress);
+    }
+
+    private void resetFailedLoginState(User user){
+        user.setFailedAttempts(0);
+        user.setLocked(false);
+        user.setLockUntil(null);
+        userRepository.save(user);
     }
 
     private void validatePassword(String password){
@@ -80,9 +115,16 @@ public class AuthService {
 
         User user = userOptional.get();
 
-        if(!passwordEncoder.matches(user.getPasswordHash(), request.getPassword()))
-            throw new RuntimeException("Invalid credentials");
+        if(isUserLocked(user)){
+            throw new RuntimeException("Account locked temporarily. Try again later!");
+        }
 
+        if(!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            handleFailedLogin(user, ipAddress);
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        resetFailedLoginState(user);
         session.setAttribute("userId", user.getId());
         session.setAttribute("userEmail", user.getEmail());
         auditService.log(user.getId(),"LOGIN", "AUTH", null, ipAddress);
